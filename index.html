@@ -7,21 +7,23 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="site-header">
-      <h1>Welcome</h1>
-      <p>A basic website scaffold for GitHub Codespaces.</p>
-    </header>
+    <main class="page-shell">
+      <header class="hero">
+        <p class="eyebrow">Dynamic System Study</p>
+        <h1>Diffusing Cell Automaton</h1>
+        <p class="lead">
+          1024 colored cells diffuse and modulate one another while random spline projections repeatedly knock the system out of equilibrium.
+        </p>
+      </header>
 
-    <main class="site-main">
-      <section>
-        <h2>Getting started</h2>
-        <p>Edit <code>index.html</code>, <code>styles.css</code>, and <code>script.js</code> to build your site.</p>
+      <section class="automaton-panel" aria-label="Animated automaton">
+        <canvas id="automatonCanvas" width="640" height="640" aria-label="Diffusing color automaton"></canvas>
       </section>
-    </main>
 
-    <footer class="site-footer">
-      <small>&copy; 2026 jaakkopee</small>
-    </footer>
+      <footer class="site-footer">
+        <small id="statusText">Stabilizing toward equilibrium...</small>
+      </footer>
+    </main>
 
     <script src="script.js"></script>
   </body>
