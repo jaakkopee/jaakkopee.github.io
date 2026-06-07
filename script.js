@@ -402,4 +402,4 @@ seedSymmetricPulse();
 projectSplineSet();
 render();
 renderSymmetricField();
-requestAnimationFrame(animate);
+animate();
