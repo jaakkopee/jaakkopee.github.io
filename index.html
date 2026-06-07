@@ -16,12 +16,34 @@
         </p>
       </header>
 
-      <section class="automaton-panel" aria-label="Animated automaton">
-        <canvas id="automatonCanvas" width="640" height="640" aria-label="Diffusing color automaton"></canvas>
-      </section>
+      <div class="canvas-grid">
+        <section class="automaton-panel" aria-label="Animated automaton">
+          <div class="panel-copy">
+            <p class="eyebrow">Continuous field</p>
+            <h2>Diffusing Color Automaton</h2>
+            <p class="lead">
+              1024 colored cells diffuse and modulate one another while random spline projections repeatedly knock the system out of equilibrium.
+            </p>
+          </div>
+          <canvas id="automatonCanvas" width="640" height="640" class="automaton-canvas automaton-canvas--square" aria-label="Diffusing color automaton"></canvas>
+          <small class="panel-status" id="statusText">Stabilizing toward equilibrium...</small>
+        </section>
+
+        <section class="automaton-panel" aria-label="Seven-state symmetric automaton">
+          <div class="panel-copy">
+            <p class="eyebrow">Seven-state lattice</p>
+            <h2>Symmetric Color Automaton</h2>
+            <p class="lead">
+              128 squares live on a 16 by 8 grid. Each cell changes state from its neighbors using a symmetric rule set that keeps the field mirrored across both axes.
+            </p>
+          </div>
+          <canvas id="symmetricCanvas" width="640" height="320" class="automaton-canvas automaton-canvas--wide" aria-label="Seven-state symmetric cell automaton"></canvas>
+          <small class="panel-status" id="symmetricStatus">Initializing the symmetric lattice...</small>
+        </section>
+      </div>
 
       <footer class="site-footer">
-        <small id="statusText">Stabilizing toward equilibrium...</small>
+        <small>Both systems run continuously in the browser.</small>
       </footer>
     </main>
 

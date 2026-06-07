@@ -14,18 +14,38 @@ const canvas = document.getElementById('automatonCanvas');
 const statusText = document.getElementById('statusText');
 const ctx = canvas.getContext('2d');
 
+const symmetricCanvas = document.getElementById('symmetricCanvas');
+const symmetricStatus = document.getElementById('symmetricStatus');
+const symmetricCtx = symmetricCanvas.getContext('2d');
+
 canvas.width = CANVAS_SIZE;
 canvas.height = CANVAS_SIZE;
+
+const SYMMETRIC_WIDTH = 16;
+const SYMMETRIC_HEIGHT = 8;
+const SYMMETRIC_CELL_COUNT = SYMMETRIC_WIDTH * SYMMETRIC_HEIGHT;
+const SYMMETRIC_STATE_COUNT = 7;
+const SYMMETRIC_COLORS = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#8b5cf6', '#4338ca'];
+
+symmetricCanvas.width = 640;
+symmetricCanvas.height = 320;
 
 const state = new Float32Array(CELL_COUNT * CHANNELS);
 const next = new Float32Array(CELL_COUNT * CHANNELS);
 const velocity = new Float32Array(CELL_COUNT * CHANNELS);
+
+const symmetricState = new Uint8Array(SYMMETRIC_CELL_COUNT);
+const symmetricNext = new Uint8Array(SYMMETRIC_CELL_COUNT);
 
 let nearEquilibriumFrames = 0;
 let framesToNextKick = 120;
 
 function idx(x, y, c) {
 	return ((y * GRID_SIZE + x) * CHANNELS) + c;
+}
+
+function symmetricIdx(x, y) {
+	return (y * SYMMETRIC_WIDTH) + x;
 }
 
 function clamp01(value) {
@@ -72,6 +92,26 @@ function initializeField() {
 				const noise = (Math.random() - 0.5) * 0.22;
 				state[idx(x, y, c)] = clamp01(blended + wobble + noise);
 			}
+		}
+	}
+}
+
+function initializeSymmetricField() {
+	for (let y = 0; y < SYMMETRIC_HEIGHT; y += 1) {
+		for (let x = 0; x < SYMMETRIC_WIDTH; x += 1) {
+			const mirrorX = SYMMETRIC_WIDTH - 1 - x;
+			const mirrorY = SYMMETRIC_HEIGHT - 1 - y;
+
+			if (x > mirrorX || y > mirrorY) {
+				continue;
+			}
+
+			const value = Math.floor(Math.random() * SYMMETRIC_STATE_COUNT);
+
+			symmetricState[symmetricIdx(x, y)] = value;
+			symmetricState[symmetricIdx(mirrorX, y)] = value;
+			symmetricState[symmetricIdx(x, mirrorY)] = value;
+			symmetricState[symmetricIdx(mirrorX, mirrorY)] = value;
 		}
 	}
 }
@@ -199,9 +239,81 @@ function render() {
 	}
 }
 
+function renderSymmetricField() {
+	const cellWidth = symmetricCanvas.width / SYMMETRIC_WIDTH;
+	const cellHeight = symmetricCanvas.height / SYMMETRIC_HEIGHT;
+
+	for (let y = 0; y < SYMMETRIC_HEIGHT; y += 1) {
+		for (let x = 0; x < SYMMETRIC_WIDTH; x += 1) {
+			const color = SYMMETRIC_COLORS[symmetricState[symmetricIdx(x, y)]];
+			symmetricCtx.fillStyle = color;
+			symmetricCtx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+		}
+	}
+}
+
+function stepSymmetricField() {
+	let activity = 0;
+
+	for (let y = 0; y < SYMMETRIC_HEIGHT; y += 1) {
+		for (let x = 0; x < SYMMETRIC_WIDTH; x += 1) {
+			const currentIndex = symmetricIdx(x, y);
+			const currentState = symmetricState[currentIndex];
+			const counts = new Array(SYMMETRIC_STATE_COUNT).fill(0);
+
+			for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+				for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+					if (offsetX === 0 && offsetY === 0) {
+						continue;
+					}
+
+					const neighborX = (x + offsetX + SYMMETRIC_WIDTH) % SYMMETRIC_WIDTH;
+					const neighborY = (y + offsetY + SYMMETRIC_HEIGHT) % SYMMETRIC_HEIGHT;
+					counts[symmetricState[symmetricIdx(neighborX, neighborY)]] += 1;
+				}
+			}
+
+			let dominantState = currentState;
+			let dominantCount = counts[currentState];
+
+			for (let stateIndex = 0; stateIndex < SYMMETRIC_STATE_COUNT; stateIndex += 1) {
+				if (counts[stateIndex] > dominantCount) {
+					dominantState = stateIndex;
+					dominantCount = counts[stateIndex];
+				}
+			}
+
+			const forwardState = (currentState + 1) % SYMMETRIC_STATE_COUNT;
+			const backwardState = (currentState + SYMMETRIC_STATE_COUNT - 1) % SYMMETRIC_STATE_COUNT;
+			const forwardPressure = counts[forwardState];
+			const backwardPressure = counts[backwardState];
+
+			let nextState = currentState;
+
+			if (dominantCount >= 5 && dominantState !== currentState) {
+				nextState = dominantState;
+			} else if (forwardPressure >= backwardPressure + 2) {
+				nextState = forwardState;
+			} else if (backwardPressure >= forwardPressure + 2) {
+				nextState = backwardState;
+			} else if (counts[currentState] <= 1 && dominantCount >= 3) {
+				nextState = dominantState;
+			}
+
+			symmetricNext[currentIndex] = nextState;
+			activity += Math.abs(nextState - currentState);
+		}
+	}
+
+	symmetricState.set(symmetricNext);
+	return activity / SYMMETRIC_CELL_COUNT;
+}
+
 function animate() {
 	const activity = stepSimulation();
+	const symmetricActivity = stepSymmetricField();
 	render();
+	renderSymmetricField();
 
 	if (activity < EQUILIBRIUM_THRESHOLD) {
 		statusText.textContent = 'Near equilibrium: waiting for spline projection.';
@@ -209,10 +321,18 @@ function animate() {
 		statusText.textContent = 'In motion: diffusion and modulation reshaping color fields.';
 	}
 
+	if (symmetricActivity < 0.7) {
+		symmetricStatus.textContent = 'Symmetric field: the seven-state lattice is mostly stable.';
+	} else {
+		symmetricStatus.textContent = 'Symmetric field: neighboring colors are driving state changes.';
+	}
+
 	requestAnimationFrame(animate);
 }
 
 initializeField();
+initializeSymmetricField();
 projectSplineSet();
 render();
+renderSymmetricField();
 requestAnimationFrame(animate);
