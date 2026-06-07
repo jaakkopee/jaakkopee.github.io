@@ -39,6 +39,8 @@ const symmetricNext = new Uint8Array(SYMMETRIC_CELL_COUNT);
 
 let nearEquilibriumFrames = 0;
 let framesToNextKick = 120;
+let symmetricTick = 0;
+let symmetricPulseFrames = 0;
 
 function idx(x, y, c) {
 	return ((y * GRID_SIZE + x) * CHANNELS) + c;
@@ -107,6 +109,61 @@ function initializeSymmetricField() {
 			}
 
 			const value = Math.floor(Math.random() * SYMMETRIC_STATE_COUNT);
+
+			symmetricState[symmetricIdx(x, y)] = value;
+			symmetricState[symmetricIdx(mirrorX, y)] = value;
+			symmetricState[symmetricIdx(x, mirrorY)] = value;
+			symmetricState[symmetricIdx(mirrorX, mirrorY)] = value;
+		}
+	}
+}
+
+function seedSymmetricPulse() {
+	const centerX = Math.floor(SYMMETRIC_WIDTH / 2);
+	const centerY = Math.floor(SYMMETRIC_HEIGHT / 2);
+	const pulseStates = [0, 1, 2, 3, 4, 5, 6];
+
+	for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+		for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+			const distance = Math.abs(offsetX) + Math.abs(offsetY);
+			if (distance > 1) {
+				continue;
+			}
+
+			const value = pulseStates[(offsetX + offsetY + pulseStates.length) % pulseStates.length];
+			const x = (centerX + offsetX + SYMMETRIC_WIDTH) % SYMMETRIC_WIDTH;
+			const y = (centerY + offsetY + SYMMETRIC_HEIGHT) % SYMMETRIC_HEIGHT;
+			const mirrorX = (SYMMETRIC_WIDTH - 1 - x + SYMMETRIC_WIDTH) % SYMMETRIC_WIDTH;
+			const mirrorY = (SYMMETRIC_HEIGHT - 1 - y + SYMMETRIC_HEIGHT) % SYMMETRIC_HEIGHT;
+
+			symmetricState[symmetricIdx(x, y)] = value;
+			symmetricState[symmetricIdx(mirrorX, y)] = value;
+			symmetricState[symmetricIdx(x, mirrorY)] = value;
+			symmetricState[symmetricIdx(mirrorX, mirrorY)] = value;
+		}
+	}
+}
+
+function injectSymmetricDisturbance() {
+	const baseX = Math.floor(Math.random() * SYMMETRIC_WIDTH);
+	const baseY = Math.floor(Math.random() * SYMMETRIC_HEIGHT);
+	const radius = 1 + Math.floor(Math.random() * 2);
+	const pivotState = Math.floor(Math.random() * SYMMETRIC_STATE_COUNT);
+
+	for (let y = 0; y < SYMMETRIC_HEIGHT; y += 1) {
+		for (let x = 0; x < SYMMETRIC_WIDTH; x += 1) {
+			const dx = Math.min(Math.abs(x - baseX), SYMMETRIC_WIDTH - Math.abs(x - baseX));
+			const dy = Math.min(Math.abs(y - baseY), SYMMETRIC_HEIGHT - Math.abs(y - baseY));
+			const distance = dx + dy;
+
+			if (distance > radius) {
+				continue;
+			}
+
+			const weight = radius - distance + 1;
+			const value = (pivotState + weight) % SYMMETRIC_STATE_COUNT;
+			const mirrorX = SYMMETRIC_WIDTH - 1 - x;
+			const mirrorY = SYMMETRIC_HEIGHT - 1 - y;
 
 			symmetricState[symmetricIdx(x, y)] = value;
 			symmetricState[symmetricIdx(mirrorX, y)] = value;
@@ -254,6 +311,11 @@ function renderSymmetricField() {
 
 function stepSymmetricField() {
 	let activity = 0;
+	symmetricPulseFrames += 1;
+
+	if (symmetricPulseFrames % 48 === 0) {
+		injectSymmetricDisturbance();
+	}
 
 	for (let y = 0; y < SYMMETRIC_HEIGHT; y += 1) {
 		for (let x = 0; x < SYMMETRIC_WIDTH; x += 1) {
@@ -306,6 +368,10 @@ function stepSymmetricField() {
 	}
 
 	symmetricState.set(symmetricNext);
+	symmetricTick += 1;
+	if (symmetricTick % 96 === 0) {
+		injectSymmetricDisturbance();
+	}
 	return activity / SYMMETRIC_CELL_COUNT;
 }
 
@@ -322,9 +388,9 @@ function animate() {
 	}
 
 	if (symmetricActivity < 0.7) {
-		symmetricStatus.textContent = 'Symmetric field: the seven-state lattice is mostly stable.';
+		symmetricStatus.textContent = `Symmetric field: frame ${symmetricTick}, ${Math.round(symmetricActivity * 1000) / 1000}`;
 	} else {
-		symmetricStatus.textContent = 'Symmetric field: neighboring colors are driving state changes.';
+		symmetricStatus.textContent = `Symmetric field: frame ${symmetricTick}, active update ${Math.round(symmetricActivity * 1000) / 1000}`;
 	}
 
 	requestAnimationFrame(animate);
@@ -332,6 +398,7 @@ function animate() {
 
 initializeField();
 initializeSymmetricField();
+seedSymmetricPulse();
 projectSplineSet();
 render();
 renderSymmetricField();
