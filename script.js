@@ -375,11 +375,140 @@ function stepSymmetricField() {
 	return activity / SYMMETRIC_CELL_COUNT;
 }
 
+const cloudCanvas = document.getElementById('cloudCanvas');
+const cloudStatus = document.getElementById('cloudStatus');
+const cloudCtx = cloudCanvas.getContext('2d');
+
+const CLOUD_WIDTH = 240;
+const CLOUD_HEIGHT = 120;
+const CLOUD_SCALE = 0.021;
+const CLOUD_WARP = 1.55;
+const CLOUD_COVERAGE = 0.44;
+const CLOUD_SOFTNESS = 0.26;
+const CLOUD_WIND = 0.008;
+const CLOUD_CHURN = 0.0035;
+
+cloudCanvas.width = CLOUD_WIDTH;
+cloudCanvas.height = CLOUD_HEIGHT;
+
+const cloudImage = cloudCtx.createImageData(CLOUD_WIDTH, CLOUD_HEIGHT);
+let cloudFrame = 0;
+let cloudCover = 0;
+
+function cloudHash(ix, iy) {
+	let h = (ix * 374761393 + iy * 668265263) | 0;
+	h = Math.imul(h ^ (h >>> 13), 1274126177);
+	return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+}
+
+function cloudFade(t) {
+	return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
+function cloudValueNoise(x, y) {
+	const ix = Math.floor(x);
+	const iy = Math.floor(y);
+	const ux = cloudFade(x - ix);
+	const uy = cloudFade(y - iy);
+
+	const a = cloudHash(ix, iy);
+	const b = cloudHash(ix + 1, iy);
+	const c = cloudHash(ix, iy + 1);
+	const d = cloudHash(ix + 1, iy + 1);
+
+	const top = a + (b - a) * ux;
+	const bottom = c + (d - c) * ux;
+	return top + (bottom - top) * uy;
+}
+
+function cloudFbm(x, y, octaves) {
+	let sum = 0;
+	let amp = 0.5;
+	let freq = 1;
+
+	for (let o = 0; o < octaves; o += 1) {
+		sum += cloudValueNoise(x * freq, y * freq) * amp;
+		freq *= 2;
+		amp *= 0.5;
+	}
+
+	return sum;
+}
+
+function cloudTurbulence(x, y, octaves) {
+	let sum = 0;
+	let amp = 0.5;
+	let freq = 1;
+
+	for (let o = 0; o < octaves; o += 1) {
+		sum += Math.abs(cloudValueNoise(x * freq, y * freq) * 2 - 1) * amp;
+		freq *= 2;
+		amp *= 0.5;
+	}
+
+	return sum;
+}
+
+function cloudSmoothstep(edge0, edge1, value) {
+	const t = clamp01((value - edge0) / (edge1 - edge0));
+	return t * t * (3 - 2 * t);
+}
+
+function renderCloudField() {
+	const pixels = cloudImage.data;
+	const wind = cloudFrame * CLOUD_WIND;
+	const churn = cloudFrame * CLOUD_CHURN;
+	let coverSum = 0;
+	let p = 0;
+
+	for (let y = 0; y < CLOUD_HEIGHT; y += 1) {
+		const ny = y * CLOUD_SCALE;
+		const skyMix = y / (CLOUD_HEIGHT - 1);
+
+		const skyR = 52 + (128 - 52) * skyMix;
+		const skyG = 110 + (182 - 110) * skyMix;
+		const skyB = 192 + (232 - 192) * skyMix;
+
+		for (let x = 0; x < CLOUD_WIDTH; x += 1) {
+			const nx = x * CLOUD_SCALE + wind;
+
+			const warpX = cloudFbm(nx + churn * 0.6, ny + 17.3, 3);
+			const warpY = cloudFbm(nx + 41.7, ny + churn, 3);
+			const wx = nx + (warpX * 2 - 1) * CLOUD_WARP;
+			const wy = ny + (warpY * 2 - 1) * CLOUD_WARP;
+
+			const turbulence = cloudTurbulence(wx, wy + churn * 0.4, 4);
+			const density = cloudSmoothstep(
+				CLOUD_COVERAGE - CLOUD_SOFTNESS,
+				CLOUD_COVERAGE + CLOUD_SOFTNESS,
+				turbulence
+			);
+			coverSum += density;
+
+			const shade = 1 - density * density * 0.16;
+			const cloudR = 252 * shade;
+			const cloudG = 253 * shade;
+			const cloudB = 255 * shade;
+
+			pixels[p] = skyR + (cloudR - skyR) * density;
+			pixels[p + 1] = skyG + (cloudG - skyG) * density;
+			pixels[p + 2] = skyB + (cloudB - skyB) * density;
+			pixels[p + 3] = 255;
+			p += 4;
+		}
+	}
+
+	cloudCtx.putImageData(cloudImage, 0, 0);
+	cloudCover = coverSum / (CLOUD_WIDTH * CLOUD_HEIGHT);
+	cloudFrame += 1;
+}
+
 function animate() {
 	const activity = stepSimulation();
 	const symmetricActivity = stepSymmetricField();
 	render();
 	renderSymmetricField();
+	renderCloudField();
 
 	if (activity < EQUILIBRIUM_THRESHOLD) {
 		statusText.textContent = 'Near equilibrium: waiting for spline projection.';
@@ -392,6 +521,8 @@ function animate() {
 	} else {
 		symmetricStatus.textContent = `Symmetric field: frame ${symmetricTick}, active update ${Math.round(symmetricActivity * 1000) / 1000}`;
 	}
+
+	cloudStatus.textContent = `Cloud field: frame ${cloudFrame}, cover ${Math.round(cloudCover * 100)}%`;
 
 	requestAnimationFrame(animate);
 }

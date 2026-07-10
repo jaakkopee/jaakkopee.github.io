@@ -108,6 +108,10 @@ h2 {
   aspect-ratio: 2 / 1;
 }
 
+.automaton-canvas--smooth {
+  image-rendering: auto;
+}
+
 .panel-status {
   color: var(--ink-1);
   font-size: 0.92rem;
