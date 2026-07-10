@@ -33,10 +33,22 @@
           <canvas id="symmetricCanvas" width="640" height="320" class="automaton-canvas automaton-canvas--wide" aria-label="Seven-state symmetric cell automaton"></canvas>
           <small class="panel-status" id="symmetricStatus">Symmetric field: starting up...</small>
         </section>
+
+        <section class="automaton-panel" aria-label="Turbulence cloud field">
+          <div class="panel-copy">
+            <p class="eyebrow">Turbulence field</p>
+            <h2>Drifting Cloud Turbulence</h2>
+            <p class="lead">
+              Fractal turbulence noise, warped by a slowly rotating flow field, condenses into white cloud shapes that drift across a blue sky.
+            </p>
+          </div>
+          <canvas id="cloudCanvas" width="240" height="120" class="automaton-canvas automaton-canvas--wide automaton-canvas--smooth" aria-label="Turbulence cloud field"></canvas>
+          <small class="panel-status" id="cloudStatus">Cloud field: condensing...</small>
+        </section>
       </div>
 
       <footer class="site-footer">
-        <small>Both systems run continuously in the browser.</small>
+        <small>All three systems run continuously in the browser.</small>
       </footer>
     </main>
 
