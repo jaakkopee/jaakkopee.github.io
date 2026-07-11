@@ -25,6 +25,7 @@ const SYMMETRIC_WIDTH = 16;
 const SYMMETRIC_HEIGHT = 8;
 const SYMMETRIC_CELL_COUNT = SYMMETRIC_WIDTH * SYMMETRIC_HEIGHT;
 const SYMMETRIC_STATE_COUNT = 7;
+const SYMMETRIC_UPDATE_INTERVAL = 100;
 const SYMMETRIC_COLORS = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#8b5cf6', '#4338ca'];
 
 symmetricCanvas.width = 640;
@@ -41,6 +42,8 @@ let nearEquilibriumFrames = 0;
 let framesToNextKick = 120;
 let symmetricTick = 0;
 let symmetricPulseFrames = 0;
+let framesSinceSymmetricUpdate = 0;
+let symmetricActivity = 0;
 
 function idx(x, y, c) {
 	return ((y * GRID_SIZE + x) * CHANNELS) + c;
@@ -505,9 +508,13 @@ function renderCloudField() {
 
 function animate() {
 	const activity = stepSimulation();
-	const symmetricActivity = stepSymmetricField();
+	framesSinceSymmetricUpdate += 1;
+	if (framesSinceSymmetricUpdate >= SYMMETRIC_UPDATE_INTERVAL) {
+		framesSinceSymmetricUpdate = 0;
+		symmetricActivity = stepSymmetricField();
+		renderSymmetricField();
+	}
 	render();
-	renderSymmetricField();
 	renderCloudField();
 
 	if (activity < EQUILIBRIUM_THRESHOLD) {
