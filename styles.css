@@ -148,6 +148,31 @@ h2 {
   backdrop-filter: blur(3px);
 }
 
+/* Browsers without <dialog> support render it as a plain element,
+   so keep it hidden until the script opens it. */
+.algorithm-dialog:not([open]) {
+  display: none;
+}
+
+.algorithm-dialog--fallback[open] {
+  display: block;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  z-index: 30;
+  overflow: auto;
+}
+
+.algorithm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 14, 18, 0.66);
+  backdrop-filter: blur(3px);
+  z-index: 20;
+}
+
 .algorithm-dialog-header {
   display: flex;
   align-items: center;

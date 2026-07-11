@@ -600,6 +600,40 @@ const algorithmDialogTitle = document.getElementById('algorithmDialogTitle');
 const algorithmDialogCode = document.getElementById('algorithmDialogCode');
 const algorithmDialogClose = document.getElementById('algorithmDialogClose');
 
+// Older WebKit (iOS < 15.4, including Chrome on iOS) has no <dialog> API,
+// so fall back to a manually positioned overlay there.
+const supportsNativeDialog = typeof algorithmDialog.showModal === 'function';
+let fallbackBackdrop = null;
+
+function openAlgorithmDialog() {
+	if (supportsNativeDialog) {
+		algorithmDialog.showModal();
+		return;
+	}
+
+	if (!fallbackBackdrop) {
+		fallbackBackdrop = document.createElement('div');
+		fallbackBackdrop.className = 'algorithm-backdrop';
+		fallbackBackdrop.addEventListener('click', closeAlgorithmDialog);
+	}
+
+	document.body.appendChild(fallbackBackdrop);
+	algorithmDialog.classList.add('algorithm-dialog--fallback');
+	algorithmDialog.setAttribute('open', '');
+}
+
+function closeAlgorithmDialog() {
+	if (supportsNativeDialog) {
+		algorithmDialog.close();
+		return;
+	}
+
+	algorithmDialog.removeAttribute('open');
+	if (fallbackBackdrop && fallbackBackdrop.parentNode) {
+		fallbackBackdrop.parentNode.removeChild(fallbackBackdrop);
+	}
+}
+
 document.querySelectorAll('.algorithm-button').forEach((button) => {
 	button.addEventListener('click', () => {
 		const entry = ALGORITHM_PSEUDOCODE[button.dataset.algorithm];
@@ -609,17 +643,21 @@ document.querySelectorAll('.algorithm-button').forEach((button) => {
 
 		algorithmDialogTitle.textContent = entry.title;
 		algorithmDialogCode.textContent = entry.code;
-		algorithmDialog.showModal();
+		openAlgorithmDialog();
 	});
 });
 
-algorithmDialogClose.addEventListener('click', () => {
-	algorithmDialog.close();
-});
+algorithmDialogClose.addEventListener('click', closeAlgorithmDialog);
 
 algorithmDialog.addEventListener('click', (event) => {
 	if (event.target === algorithmDialog) {
-		algorithmDialog.close();
+		closeAlgorithmDialog();
+	}
+});
+
+document.addEventListener('keydown', (event) => {
+	if (!supportsNativeDialog && event.key === 'Escape' && algorithmDialog.hasAttribute('open')) {
+		closeAlgorithmDialog();
 	}
 });
 
