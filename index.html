@@ -19,6 +19,7 @@
             </p>
           </div>
           <canvas id="automatonCanvas" width="640" height="640" class="automaton-canvas automaton-canvas--square" aria-label="Diffusing color automaton"></canvas>
+          <button type="button" class="algorithm-button" data-algorithm="diffusion">View Algorithm</button>
           <small class="panel-status" id="statusText">Stabilizing toward equilibrium...</small>
         </section>
 
@@ -31,6 +32,7 @@
             </p>
           </div>
           <canvas id="symmetricCanvas" width="640" height="320" class="automaton-canvas automaton-canvas--wide" aria-label="Seven-state symmetric cell automaton"></canvas>
+          <button type="button" class="algorithm-button" data-algorithm="symmetric">View Algorithm</button>
           <small class="panel-status" id="symmetricStatus">Symmetric field: starting up...</small>
         </section>
 
@@ -43,6 +45,7 @@
             </p>
           </div>
           <canvas id="cloudCanvas" width="240" height="120" class="automaton-canvas automaton-canvas--wide automaton-canvas--smooth" aria-label="Turbulence cloud field"></canvas>
+          <button type="button" class="algorithm-button" data-algorithm="clouds">View Algorithm</button>
           <small class="panel-status" id="cloudStatus">Cloud field: condensing...</small>
         </section>
       </div>
@@ -51,6 +54,14 @@
         <small>All three systems run continuously in the browser.</small>
       </footer>
     </main>
+
+    <dialog id="algorithmDialog" class="algorithm-dialog" aria-labelledby="algorithmDialogTitle">
+      <header class="algorithm-dialog-header">
+        <h3 id="algorithmDialogTitle">Algorithm</h3>
+        <button type="button" class="algorithm-dialog-close" id="algorithmDialogClose" aria-label="Close algorithm view">&times;</button>
+      </header>
+      <pre class="algorithm-pseudocode"><code id="algorithmDialogCode"></code></pre>
+    </dialog>
 
     <script src="script.js"></script>
   </body>

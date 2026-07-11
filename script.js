@@ -506,6 +506,123 @@ function renderCloudField() {
 	cloudFrame += 1;
 }
 
+const ALGORITHM_PSEUDOCODE = {
+	diffusion: {
+		title: 'Diffusing Color Automaton',
+		code: `state    <- 32x32 grid of RGB colors, seeded from two random colors
+velocity <- 32x32 grid of RGB deltas, all zero
+
+each frame:
+    for each cell (x, y) and channel c:
+        average   <- mean of the 4 wrapped neighbors
+        laplacian <- average - state[x, y, c]
+
+        velocity[x, y, c] <- velocity[x, y, c] * DAMPING
+                             + laplacian * DIFFUSION
+
+        next[x, y, c] <- clamp01(state[x, y, c] + velocity[x, y, c])
+        pull next[x, y, c] slightly toward 0.5   // color damping
+
+    state <- next
+    activity <- mean(|laplacian| + 0.6 * |velocity|)
+
+    if activity stays below THRESHOLD long enough:
+        // kick the system out of equilibrium
+        draw 2..5 random cubic Bezier splines:
+            sample 64 points along each spline
+            at each point, blend a random color into
+            nearby cells (falling off with distance)
+            and add half the change to their velocity`
+	},
+	symmetric: {
+		title: 'Symmetric Color Automaton',
+		code: `state <- 16x8 grid of cells, each in one of 7 states,
+         seeded so the field is mirrored across both axes
+
+every UPDATE_INTERVAL frames:
+    for each cell:
+        counts <- histogram of the 8 wrapped neighbor states
+        dominant <- state with the highest neighbor count
+        forward  <- (current + 1) mod 7
+        backward <- (current - 1) mod 7
+
+        if counts[dominant] >= 5 and dominant != current:
+            next <- dominant                    // strong majority wins
+        else if counts[forward] >= counts[backward] + 2:
+            next <- forward                     // pushed up the cycle
+        else if counts[backward] >= counts[forward] + 2:
+            next <- backward                    // pushed down the cycle
+        else if counts[current] <= 1 and counts[dominant] >= 3:
+            next <- dominant                    // isolated cell converts
+        else:
+            next <- current
+
+    state <- next
+
+periodically:
+    pick a random center, radius, and pivot state
+    overwrite cells within the radius, always writing the
+    same value to (x, y) and its X/Y/XY mirror positions
+    so the disturbance keeps the field symmetric`
+	},
+	clouds: {
+		title: 'Drifting Cloud Turbulence',
+		code: `each frame:
+    wind  <- frame * WIND_SPEED     // horizontal drift
+    churn <- frame * CHURN_SPEED    // slow internal evolution
+
+    for each pixel (x, y):
+        sky <- vertical gradient from deep to pale blue
+
+        // domain warp: bend the sample position with fBm noise
+        (nx, ny) <- (x * SCALE + wind, y * SCALE)
+        wx <- nx + (fbm(nx + churn, ny) * 2 - 1) * WARP
+        wy <- ny + (fbm(nx, ny + churn) * 2 - 1) * WARP
+
+        // fractal turbulence: sum of folded value noise octaves
+        t <- sum over 4 octaves of
+             |valueNoise(wx * freq, wy * freq) * 2 - 1| * amp
+             (freq doubles, amp halves each octave)
+
+        // threshold turbulence into cloud density
+        density <- smoothstep(COVERAGE - SOFTNESS,
+                              COVERAGE + SOFTNESS, t)
+
+        shade <- 1 - density^2 * 0.16   // darken thick cloud
+        pixel <- mix(sky, white * shade, density)
+
+// valueNoise: hash lattice corners, interpolate with a quintic fade`
+	}
+};
+
+const algorithmDialog = document.getElementById('algorithmDialog');
+const algorithmDialogTitle = document.getElementById('algorithmDialogTitle');
+const algorithmDialogCode = document.getElementById('algorithmDialogCode');
+const algorithmDialogClose = document.getElementById('algorithmDialogClose');
+
+document.querySelectorAll('.algorithm-button').forEach((button) => {
+	button.addEventListener('click', () => {
+		const entry = ALGORITHM_PSEUDOCODE[button.dataset.algorithm];
+		if (!entry) {
+			return;
+		}
+
+		algorithmDialogTitle.textContent = entry.title;
+		algorithmDialogCode.textContent = entry.code;
+		algorithmDialog.showModal();
+	});
+});
+
+algorithmDialogClose.addEventListener('click', () => {
+	algorithmDialog.close();
+});
+
+algorithmDialog.addEventListener('click', (event) => {
+	if (event.target === algorithmDialog) {
+		algorithmDialog.close();
+	}
+});
+
 function animate() {
 	const activity = stepSimulation();
 	framesSinceSymmetricUpdate += 1;
